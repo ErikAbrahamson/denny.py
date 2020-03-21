@@ -13,11 +13,13 @@ TOKEN = os.getenv('DENNY_DISCORD_TOKEN')
 
 ENV_HAS_CUDA = os.name == 'nt'
 MODEL_DIR = os.getcwd() + '/model/v1/'
-client = discord.Client()
 
 
 class DennyClient(discord.Client):
-    default_temp: 0.9
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    default_temp = 0.9
     model = textgenrnn(
         config_path=MODEL_DIR + 'denny_config.json',
         weights_path=MODEL_DIR + 'denny_weights.hdf5',
@@ -50,9 +52,15 @@ class DennyClient(discord.Client):
 
     # @client.event
     async def on_message(self, message):
-        if message.author == self.user:
+        try:
+            if message.author == self.user:
+                return
+            with message.channel.typing():
+                print('Generating message')
+                await message.channel.send(self.generate_response(message))
+
+        except discord.HTTPException:
             return
-        await message.channel.send(self.generate_response())
 
     async def train(self, message):
         try:
@@ -93,18 +101,20 @@ class DennyClient(discord.Client):
         resp = self.model.generate(1, return_as_list=True,
                                    temperature=self.default_temp)[0]
         if match:
-            async with message.channel.typing():
-                if meme:
-                    return self.create_meme()
-                elif train and ENV_HAS_CUDA:
-                    self.train()
-                    return 'Finished my homework!'
-                else:
-                    if len(resp) == 0 or resp.startswith('<'):
-                        resp = self.model.generate(1, return_as_list=True,
-                                                   temperature=0.5)[0]
-                    return resp
+            if meme:
+                return self.create_meme()
+
+            elif train and ENV_HAS_CUDA:
+                self.train(message)
+                return 'Finished my homework!'
+
+            else:
+                if len(resp) == 0 or resp.startswith('<'):
+                    resp = self.model.generate(1, return_as_list=True,
+                                               temperature=0.5)[0]
+                return resp
 
 
-client = DennyClient(discord.Client())
-client.run(TOKEN)
+if __name__ == "__main__":
+    client = DennyClient()
+    client.run(TOKEN)
