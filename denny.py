@@ -55,9 +55,12 @@ class DennyClient(discord.Client):
         try:
             if message.author == self.user:
                 return
+
+            resp = self.generate_response(message)
+
             with message.channel.typing():
-                print('Generating message')
-                await message.channel.send(self.generate_response(message))
+                print('Sending message: {}'.format(resp))
+                await message.channel.send(resp)
 
         except discord.HTTPException:
             return
