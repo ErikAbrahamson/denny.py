@@ -1,0 +1,8 @@
+{
+	"name": "denny",
+	"version": "1.0.0",
+	"description": "An all-around nice guy.",
+	"main": "denny.py",
+	"author": "Erik Abrahamson",
+	"dependencies": {}
+}
