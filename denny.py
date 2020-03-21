@@ -52,15 +52,15 @@ class DennyClient(discord.Client):
 
     # @client.event
     async def on_message(self, message):
+        match = re.findall('(?i)denny', message.content)
         try:
             if message.author == self.user:
                 return
 
-            resp = self.generate_response(message)
-
-            with message.channel.typing():
-                print('Sending message: {}'.format(resp))
-                await message.channel.send(resp)
+            elif match:
+                resp = self.generate_response(message)
+                with message.channel.typing():
+                    await message.channel.send(resp)
 
         except discord.HTTPException:
             return
@@ -97,25 +97,23 @@ class DennyClient(discord.Client):
             return
 
     def generate_response(self, message):
-        match = re.findall('(?i)denny', message.content)
         train = re.findall('(?i)homework', message.content)
         meme = re.findall('(?i)meme', message.content)
 
         resp = self.model.generate(1, return_as_list=True,
                                    temperature=self.default_temp)[0]
-        if match:
-            if meme:
-                return self.create_meme()
+        if meme:
+            return self.create_meme()
 
-            elif train and ENV_HAS_CUDA:
-                self.train(message)
-                return 'Finished my homework!'
+        elif train and ENV_HAS_CUDA:
+            self.train(message)
+            return 'Finished my homework!'
 
-            else:
-                if len(resp) == 0 or resp.startswith('<'):
-                    resp = self.model.generate(1, return_as_list=True,
-                                               temperature=0.5)[0]
-                return resp
+        else:
+            if len(resp) == 0 or resp.startswith('<'):
+                resp = self.model.generate(1, return_as_list=True,
+                                           temperature=0.5)[0]
+            return resp
 
 
 if __name__ == "__main__":
