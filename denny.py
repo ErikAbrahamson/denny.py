@@ -101,13 +101,13 @@ class DennyClient(discord.Client):
             return
 
     def dice_roll(self):
-        img_path = roll_the_dice()
+        img_path, nick = roll_the_dice()
 
         with open(img_path, 'rb') as image:
             reader = image.read()
 
         f = discord.File(io.BytesIO(reader), filename='result.png')
-        embed = discord.Embed(color=discord.Color.dark_orange())
+        embed = discord.Embed(title=nick, color=discord.Color.dark_orange())
 
         embed.set_image(url=f"""attachment://result.png""")
         return embed, f
