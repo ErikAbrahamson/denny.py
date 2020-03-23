@@ -1,10 +1,14 @@
 import requests
 import json
 import discord
-import re
+import io
 import os
 import random
 from textgenrnn import textgenrnn
+
+from dice import roll_the_dice
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 IMGFLIP_USERNAME = os.getenv('IMGFLIP_USERNAME')
 IMGFLIP_PASSWORD = os.getenv('IMGFLIP_PASSWORD')
@@ -52,15 +56,16 @@ class DennyClient(discord.Client):
 
     # @client.event
     async def on_message(self, message):
-        match = re.findall('(?i)denny', message.content)
         try:
             if message.author == self.user:
                 return
 
-            elif match:
-                resp = self.generate_response(message)
+            if 'denny' in message.content.lower():
                 with message.channel.typing():
-                    await message.channel.send(resp)
+                    await self.generate(message)
+
+            elif isinstance(message.channel, discord.DMChannel):
+                await self.generate(message)
 
         except discord.HTTPException:
             return
@@ -93,99 +98,52 @@ class DennyClient(discord.Client):
             print(self.model.model.summary())
 
         except discord.HTTPException:
-            # TODO: Save history to file periodically
             return
 
-    def generate_response(self, message):
-        train = re.findall('(?i)homework', message.content)
-        meme = re.findall('(?i)meme', message.content)
-        roll = re.findall('(?i)meme', message.content)
+    def dice_roll(self):
+        img_path = roll_the_dice()
 
-        resp = self.model.generate(1, return_as_list=True,
-                                   temperature=self.default_temp)[0]
-        if roll:
-            return roll()
-        if meme:
-            return self.create_meme()
+        with open(img_path, 'rb') as image:
+            reader = image.read()
 
-        elif train and ENV_HAS_CUDA:
+        f = discord.File(io.BytesIO(reader), filename='result.png')
+        embed = discord.Embed(color=discord.Color.dark_orange())
+
+        embed.set_image(url=f"""attachment://result.png""")
+        return embed, f
+
+    async def generate(self, message, msg=None, f=None, embed=None):
+        if 'meme' in message.content.lower():
+            msg = self.create_meme()
+
+        elif 'dice' in message.content.lower():
+            emb, result = self.dice_roll()
+            f = result
+            embed = emb
+
+        elif 'homework' in message.content.lower():
             self.train(message)
-            return 'Finished my homework!'
+            msg = 'Finished my homework!'
 
         else:
-            if len(resp) == 0 or resp.startswith('<'):
-                resp = self.model.generate(1, return_as_list=True,
-                                           temperature=0.5)[0]
-            return resp
+            msg = self.model.generate(1, return_as_list=True,
+                                      temperature=self.default_temp)[0]
 
-    def roll(self):
-        o = 'o'
-        base = '╔═══════╗\n'
-        row1 = '║       ║\n'
-        row2 = '║       ║\n'
-        row3 = '║       ║\n'
-        bott = '╚═══════╝'
+            if len(msg) == 0 or msg.startswith('<'):
+                msg = self.model.generate(1, return_as_list=True,
+                                          temperature=1.0)[0]
+        try:
+            await message.channel.send(content=msg, embed=embed, file=f)
 
-        row_1_chars = list(row1)
-        row_2_chars = list(row2)
-        row_3_chars = list(row3)
-
-        rolled_number = random.randint(1, 6)
-
-        if rolled_number == 1:
-            row_2_chars[4] = o
-            row2 = ''.join(row_2_chars)
-
-        elif rolled_number == 2:
-            row_1_chars[2] = o
-            row_3_chars[6] = o
-
-            row1 = ''.join(row_1_chars)
-            row3 = ''.join(row_3_chars)
-
-        elif rolled_number == 3:
-            row_1_chars[2] = o
-            row_2_chars[4] = o
-            row_3_chars[6] = o
-
-            row1 = ''.join(row_1_chars)
-            row2 = ''.join(row_2_chars)
-            row3 = ''.join(row_3_chars)
-
-        elif rolled_number == 4:
-            row_1_chars[2] = o
-            row_1_chars[6] = o
-            row_3_chars[2] = o
-            row_3_chars[6] = o
-
-            row1 = ''.join(row_1_chars)
-            row3 = ''.join(row_3_chars)
-
-        elif rolled_number == 5:
-            row_1_chars[2] = o
-            row_1_chars[6] = o
-            row_2_chars[4] = o
-            row_3_chars[2] = o
-            row_3_chars[6] = o
-
-            row1 = ''.join(row_1_chars)
-            row2 = ''.join(row_2_chars)
-            row3 = ''.join(row_3_chars)
-
-        else:
-            row_1_chars[2] = o
-            row_1_chars[6] = o
-            row_2_chars[2] = o
-            row_2_chars[6] = o
-            row_3_chars[2] = o
-            row_3_chars[6] = o
-            row1 = ''.join(row_1_chars)
-            row2 = ''.join(row_2_chars)
-            row3 = ''.join(row_3_chars)
-
-        return base+row1+row2+row3+bott
+        except discord.HTTPException:
+            return
+        except discord.NotFound:
+            return
+        except discord.Forbidden:
+            return
+        except discord.InvalidArgument:
+            return
 
 
-if __name__ == "__main__":
-    client = DennyClient()
-    client.run(TOKEN)
+client = DennyClient()
+client.run(TOKEN)

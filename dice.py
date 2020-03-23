@@ -1,69 +1,53 @@
 import random
+import os
+import numpy as np
+from PIL import Image
 
 
-def roll():
-    o = 'o'
-    base = '╔═══════╗\n'
-    row1 = '║       ║\n'
-    row2 = '║       ║\n'
-    row3 = '║       ║\n'
-    bott = '╚═══════╝'
+def roll_the_dice():
+    def roll():
+        set_matrix = np.array([
+            (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1),
+            (1, 2), (2, 2), (3, 2), (4, 2), (5, 2), (6, 2),
+            (1, 3), (2, 3), (3, 3), (4, 3), (5, 3), (6, 3),
+            (1, 4), (2, 4), (3, 4), (4, 4), (5, 4), (6, 4),
+            (1, 5), (2, 5), (3, 5), (4, 5), (5, 5), (6, 5),
+            (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6)
+        ])
+        return random.choice(set_matrix)
 
-    row_1_chars = list(row1)
-    row_2_chars = list(row2)
-    row_3_chars = list(row3)
+    def get_die_face(i):
+        img_dir = os.getcwd() + '/assets/dice/'
+        faces = {
+            1: img_dir + '1.png',
+            2: img_dir + '2.png',
+            3: img_dir + '3.png',
+            4: img_dir + '4.png',
+            5: img_dir + '5.png',
+            6: img_dir + '6.png'
+        }
+        return faces.get(i)
 
-    rolled_number = random.randint(1, 6)
+    def save_result():
+        die_1 = get_die_face(roll()[0])
+        die_2 = get_die_face(roll()[1])
 
-    if rolled_number == 1:
-        row_2_chars[4] = o
-        row2 = ''.join(row_2_chars)
+        images = [Image.open(x) for x in [die_1, die_2]]
+        widths, heights = zip(*(i.size for i in images))
 
-    elif rolled_number == 2:
-        row_1_chars[2] = o
-        row_3_chars[6] = o
+        total_width = sum(widths) + 10
+        max_height = max(heights)
 
-        row1 = ''.join(row_1_chars)
-        row3 = ''.join(row_3_chars)
+        result = Image.new('RGBA', (total_width, max_height))
+        x_offset = 0
 
-    elif rolled_number == 3:
-        row_1_chars[2] = o
-        row_2_chars[4] = o
-        row_3_chars[6] = o
+        for im in images:
+            result.paste(im, (x_offset, 0))
+            x_offset += im.size[0]
 
-        row1 = ''.join(row_1_chars)
-        row2 = ''.join(row_2_chars)
-        row3 = ''.join(row_3_chars)
+        result_path = os.getcwd() + '/assets/dice/result.png'
+        result.save(result_path)
 
-    elif rolled_number == 4:
-        row_1_chars[2] = o
-        row_1_chars[6] = o
-        row_3_chars[2] = o
-        row_3_chars[6] = o
+        return result_path
 
-        row1 = ''.join(row_1_chars)
-        row3 = ''.join(row_3_chars)
-
-    elif rolled_number == 5:
-        row_1_chars[2] = o
-        row_1_chars[6] = o
-        row_2_chars[4] = o
-        row_3_chars[2] = o
-        row_3_chars[6] = o
-
-        row1 = ''.join(row_1_chars)
-        row2 = ''.join(row_2_chars)
-        row3 = ''.join(row_3_chars)
-
-    else:
-        row_1_chars[2] = o
-        row_1_chars[6] = o
-        row_2_chars[2] = o
-        row_2_chars[6] = o
-        row_3_chars[2] = o
-        row_3_chars[6] = o
-        row1 = ''.join(row_1_chars)
-        row2 = ''.join(row_2_chars)
-        row3 = ''.join(row_3_chars)
-
-    return base+row1+row2+row3+bott
+    return save_result()
