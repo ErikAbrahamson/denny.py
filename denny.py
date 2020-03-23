@@ -8,7 +8,7 @@ from textgenrnn import textgenrnn
 
 from dice import roll_the_dice
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 IMGFLIP_USERNAME = os.getenv('IMGFLIP_USERNAME')
 IMGFLIP_PASSWORD = os.getenv('IMGFLIP_PASSWORD')
@@ -122,7 +122,7 @@ class DennyClient(discord.Client):
             embed = emb
 
         elif 'homework' in message.content.lower():
-            self.train(message)
+            await self.train(message)
             msg = 'Finished my homework!'
 
         else:
