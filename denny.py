@@ -6,6 +6,7 @@ import os
 import random
 from textgenrnn import textgenrnn
 
+from dream import deep_dream
 from dice import roll_the_dice
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -112,6 +113,28 @@ class DennyClient(discord.Client):
         embed.set_image(url=f"""attachment://result.png""")
         return embed, f
 
+    async def make_dream(self, message):
+        if len(message.attachments) > 0:
+            attachment = message.attachments[0]
+
+            try:
+                img_bytes = await attachment.read()
+                image_path = deep_dream(img_bytes)
+
+                with open(image_path, 'rb') as image:
+
+                    reader = image.read()
+                f = discord.File(io.BytesIO(reader), filename='dream.jpg')
+                embed = discord.Embed(color=discord.Color.dark_blue())
+
+                embed.set_image(url=f"""attachment://dream.jpg""")
+                return embed, f
+
+            except discord.NotFound:
+                return
+        else:
+            return
+
     async def generate(self, message, msg=None, f=None, embed=None):
         if 'meme' in message.content.lower():
             msg = self.create_meme()
@@ -124,6 +147,11 @@ class DennyClient(discord.Client):
         elif 'homework' in message.content.lower():
             await self.train(message)
             msg = 'Finished my homework!'
+
+        elif 'dream' in message.content.lower():
+            emb, img = await self.make_dream(message)
+            embed = emb
+            f = img
 
         else:
             msg = self.model.generate(1, return_as_list=True,
