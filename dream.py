@@ -10,10 +10,12 @@ import numpy as np
 import IPython.display as display
 import PIL.Image
 
+# model = tf.keras.models.load_model(os.getcwd() + '/model/v1/denny_dream/')
 
 def deep_dream(img_bytes):
     filepath = os.getcwd() + '/dream.jpg'
     # Download an image and read it to a NumPy array
+
     def download(img_bytes, max_dim=None):
         stream = io.BytesIO(img_bytes)
         img = PIL.Image.open(stream).convert('RGB')
@@ -43,7 +45,7 @@ def deep_dream(img_bytes):
 
     # Use a pre-trained model for simplicity
     base_model = tf.keras.applications.InceptionV3(include_top=False,
-                                                weights='imagenet')
+                                                   weights='imagenet')
 
     # Maximize the activations of these layers
     names = ['mixed3', 'mixed5']
@@ -65,17 +67,21 @@ def deep_dream(img_bytes):
             loss = tf.math.reduce_mean(act)
             losses.append(loss)
 
-        return  tf.reduce_sum(losses)
+        return tf.reduce_sum(losses)
 
     def random_roll(img, maxroll):
         # Randomly shift the image to avoid tiled boundaries.
-        shift = tf.random.uniform(shape=[2], minval=-maxroll, maxval=maxroll, dtype=tf.int32)
-        shift_down, shift_right = shift[0],shift[1]
-        img_rolled = tf.roll(tf.roll(img, shift_right, axis=1), shift_down, axis=0)
+        shift = tf.random.uniform(shape=[2], minval=-maxroll, maxval=maxroll,
+                                  dtype=tf.int32)
+
+        shift_down, shift_right = shift[0], shift[1]
+        img_rolled = tf.roll(tf.roll(img, shift_right, axis=1), shift_down,
+                             axis=0)
 
         return shift_down, shift_right, img_rolled
 
-    shift_down, shift_right, img_rolled = random_roll(np.array(original_img), 512)
+    shift_down, shift_right, img_rolled = random_roll(np.array(original_img),
+                                                      512)
     save(img_rolled)
 
     class TiledGradients(tf.Module):
@@ -84,10 +90,9 @@ def deep_dream(img_bytes):
 
         @tf.function(
             input_signature=(
-                tf.TensorSpec(shape=[None,None,3], dtype=tf.float32),
+                tf.TensorSpec(shape=[None, None, 3], dtype=tf.float32),
                 tf.TensorSpec(shape=[], dtype=tf.int32),)
         )
-
         def __call__(self, img, tile_size=512):
             shift_down, shift_right, img_rolled = random_roll(img, tile_size)
 
@@ -115,7 +120,8 @@ def deep_dream(img_bytes):
                     gradients = gradients + tape.gradient(loss, img_rolled)
 
             # Undo the random shift applied to the image and its gradients.
-            gradients = tf.roll(tf.roll(gradients, -shift_right, axis=1), -shift_down, axis=0)
+            gradients = tf.roll(tf.roll(gradients, -shift_right, axis=1),
+                                -shift_down, axis=0)
 
             # Normalize the gradients.
             gradients /= tf.math.reduce_std(gradients) + 1e-8
@@ -125,7 +131,7 @@ def deep_dream(img_bytes):
     get_tiled_gradients = TiledGradients(dream_model)
 
     def run_deep_image_with_octaves(img, steps_per_octave=100, step_size=0.01,
-                                    octaves=range(-2,3), octave_scale=1.3):
+                                    octaves=range(-2, 3), octave_scale=1.3):
         base_shape = tf.shape(img)
         img = tf.keras.preprocessing.image.img_to_array(img)
         img = tf.keras.applications.inception_v3.preprocess_input(img)
@@ -136,7 +142,7 @@ def deep_dream(img_bytes):
         for octave in octaves:
             # Scale the image based on the octave
             new_size = tf.cast(tf.convert_to_tensor(base_shape[:-1]),
-                            tf.float32)*(octave_scale**octave)
+                               tf.float32)*(octave_scale**octave)
 
             img = tf.image.resize(img, tf.cast(new_size, tf.int32))
 
@@ -158,6 +164,9 @@ def deep_dream(img_bytes):
     display.clear_output(wait=True)
     img = tf.image.resize(img, base_shape)
     img = tf.image.convert_image_dtype(img/255.0, dtype=tf.uint8)
+
+    # TODO: Train own model
+    # dream_model.save(os.getcwd() + '/model/v1/dream', save_format='tf')
 
     result = PIL.Image.fromarray(np.array(img))
     save(result)
