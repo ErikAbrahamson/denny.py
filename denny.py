@@ -38,33 +38,44 @@ class DennyClient(discord.Client):
         print('--------------------------------------')
 
     def get_corona_stats(self, message):
-        user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.7)'
-        + 'Gecko/2009021910 Firefox/3.0.7'
+        agent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.7)' \
+            'Gecko/2009021910 Firefox/3.0.7'
 
         url = 'https://corona.lmao.ninja/states'
-        headers = {'User-Agent': user_agent,}
+        headers = {'User-Agent': agent}
 
         req = urllib.request.Request(url, None, headers)
         res = urllib.request.urlopen(req)
 
-        results = json.loads(res.read().decode(res.info().get_param('charset') or 'utf-8'))
-        
-        for state in results:
-            if state['name'].lower() in message.content.lower():
-                embed = discord.Embed(title=state['name'], timestamp=datetime.today(),
-                        color=discord.Color.dark_orange())
-                embed.add_field(name='Total Cases:', value=state['cases'], inline=False)
-                embed.add_field(name='Cases Today:', value=state['todayCases'], inline=False)
-                embed.add_field(name='Total Deaths:', value=state['deaths'], inline=False)
-                embed.add_field(name='Deaths Today:', value=state['todayDeaths'], inline=False)
-                embed.add_field(name='Active Cases:', value=state['active'], inline=False)
+        results = json.loads(
+            res.read().decode(res.info().get_param('charset') or 'utf-8'))
 
-                state_name = state['name'].replace(' ', '_')
-                img_url = 'https://en.wikipedia.org/wiki/Flags_of_the_U.S._states_and_territories#/media/File:Flag_of_{}.svg'.format(state_name)
-                embed.set_thumbnail(img_url)
+        embed = None
+        for state in results:
+            if state['state'].lower() in message.content.lower():
+                embed = discord.Embed(title=state['state'],
+                                      color=discord.Color.dark_teal())
+
+                embed.add_field(name='Total Cases:',
+                                value=state['cases'], inline=False)
+                embed.add_field(name='Cases Today:',
+                                value=state['todayCases'], inline=False)
+                embed.add_field(name='Total Deaths:',
+                                value=state['deaths'], inline=False)
+                embed.add_field(name='Deaths Today:',
+                                value=state['todayDeaths'], inline=False)
+                embed.add_field(name='Active Cases:',
+                                value=state['active'], inline=False)
+
+                name = state['state'].replace(' ', '-').lower()
+                url = 'https://raw.githubusercontent.com/CivilServiceUSA/'\
+                    'us-states/master/images/flags/{}-large.png'.format(name)
+                embed.set_thumbnail(url=url)
+
+        return embed
 
     def create_meme(self):
-        with open('./meme_list.json') as lst:
+        with open(os.getcwd() + '/assets/meme/meme_list.json') as lst:
             meme_list = json.load(lst)
 
         random_meme = random.choice(meme_list['data']['memes'])
@@ -180,6 +191,9 @@ class DennyClient(discord.Client):
             embed = emb
             f = img
 
+        elif 'corona' in message.content.lower():
+            embed = self.get_corona_stats(message)
+
         else:
             msg = self.model.generate(1, return_as_list=True,
                                       temperature=self.default_temp)[0]
@@ -188,7 +202,10 @@ class DennyClient(discord.Client):
                 msg = self.model.generate(1, return_as_list=True,
                                           temperature=1.0)[0]
         try:
-            await message.channel.send(content=msg, embed=embed, file=f)
+            if msg is None and embed is None and f is None:
+                return
+            else:
+                await message.channel.send(content=msg, embed=embed, file=f)
 
         except discord.HTTPException:
             return
