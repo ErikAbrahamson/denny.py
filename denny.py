@@ -2,6 +2,7 @@ import requests
 import json
 import discord
 import io
+import datetime
 import os
 import random
 import urllib.request
@@ -70,6 +71,45 @@ class DennyClient(discord.Client):
                 name = state['state'].replace(' ', '-').lower()
                 url = 'https://raw.githubusercontent.com/CivilServiceUSA/'\
                     'us-states/master/images/flags/{}-large.png'.format(name)
+
+                embed.set_thumbnail(url=url)
+
+        url = 'https://corona.lmao.ninja/countries'
+
+        req = urllib.request.Request(url, None, headers)
+        res = urllib.request.urlopen(req)
+
+        results = json.loads(
+            res.read().decode(res.info().get_param('charset') or 'utf-8'))
+
+        for country in results:
+            if country['country'].lower() in message.content.lower():
+                embed = discord.Embed(title=country['country'],
+                                        color=discord.Color.teal())
+
+                embed.add_field(name='Total Cases:',
+                                value=country['cases'])
+                embed.add_field(name='Cases Today:',
+                                value=country['todayCases'])
+                embed.add_field(name='Total Deaths:',
+                                value=country['deaths'])
+                embed.add_field(name='Deaths Today:',
+                                value=country['todayDeaths'])
+                embed.add_field(name='Active Cases:',
+                                value=country['active'])
+                embed.add_field(name='Critical Cases:',
+                                value=country['critical'])
+                embed.add_field(name='Cases per Million:',
+                                value=country['casesPerOneMillion'])
+                embed.add_field(name='Deaths per Million:',
+                                value=country['deathsPerOneMillion'])
+
+                date = datetime.datetime.fromtimestamp(country['updated']/1000.0)
+                date = date.strftime('%Y-%m-%d %H:%M:%S')
+
+                embed.add_field(name='Last Updated:', value=date)
+
+                url = country['countryInfo']['flag']
                 embed.set_thumbnail(url=url)
 
         return embed
