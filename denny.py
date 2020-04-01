@@ -22,7 +22,6 @@ TOKEN = os.getenv('DENNY_DISCORD_TOKEN')
 ENV_HAS_CUDA = os.name == 'nt'
 MODEL_DIR = os.getcwd() + '/model/v1/'
 
-
 class DennyClient(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -138,6 +137,12 @@ class DennyClient(discord.Client):
         else:
             return
 
+    def corona_stats(self, message, embed=None):
+        if 'roll' in message.content.lower():
+            return get_corona_stats(message=message, randomize=True)
+        else:
+            return get_corona_stats(message=message)
+
     async def generate(self, message, msg=None, f=None, embed=None):
         if 'meme' in message.content.lower():
             msg = self.create_meme()
@@ -157,7 +162,7 @@ class DennyClient(discord.Client):
             f = img
 
         elif 'corona' in message.content.lower():
-            embed = get_corona_stats(message=message)
+            embed = self.corona_stats(message)
 
         else:
             msg = self.model.generate(1, return_as_list=True,
